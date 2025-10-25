@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta nam    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMS Marketplace</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- Header and Navigation -->
+        <header class="flex flex-col md:flex-row items-center justify-between py-4 border-b border-gray-200">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-3xl font-extrabold text-indigo-600 tracking-tight">MMS</h1>
+                <span class="text-xl text-gray-500 hidden sm:inline">| Buy & Sell Anything</span>
+            </div>
+
+            <div class="mt-4 md:mt-0 flex space-x-3 items-center w-full md:w-auto">
+                <input type="text" id="search-input" placeholder="Search products..."
+                       class="w-full md:w-64 p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition">
+                <button onclick="toggleModal()"
+                        class="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out whitespace-nowrap">
+                    + Add Listing
+                </button>
+            </div>
+        </header>
+
+        <!-- User Information (for Public Data ID) -->
+        <div class="py-3 text-sm text-gray-600">
+            <span id="auth-status" class="font-semibold text-red-500">Connecting...</span>
+            <p class="mt-1">Your Public ID (share this to allow others to message you about your listings): <span id="user-id-display" class="font-mono text-xs bg-gray-200 px-2 py-0.5 rounded-md break-all"></span></p>
+        </div>
+
+        <!-- Category Filter (Simple Mockup) -->
+        <nav class="py-3 space-x-4 text-sm text-gray-700 overflow-x-auto whitespace-nowrap">
+            <a href="#" class="px-3 py-1 bg-indigo-100 text-indigo-700 font-semibold rounded-full shadow-sm">All Categories</a>
+            <a href="#" class="px-3 py-1 hover:bg-gray-200 rounded-full transition">Electronics</a>
+            <a href="#" class="px-3 py-1 hover:bg-gray-200 rounded-full transition">Vehicles</a>
+            <a href="#" class="px-3 py-1 hover:bg-gray-200 rounded-full transition">Real Estate</a>
+            <a href="#" class="px-3 py-1 hover:bg-gray-200 rounded-full transition">Jobs</a>
+            <a href="#" class="px-3 py-1 hover:bg-gray-200 rounded-full transition">Home & Garden</a>
+        </nav>
+
+        <hr class="mb-6">
+
+        <!-- Product Listings Area -->
+        <main class="py-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Latest Listings</h2>
+            <div id="listings-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Product cards will be injected here by JavaScript -->
+            </div>
+             <!-- Initial Loading/Empty State -->
+            <div id="loading-state" class="text-center py-12 text-gray-500">
+                <svg class="animate-spin h-6 w-6 mx-auto mb-3 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p>Loading market data...</p>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Add Listing Modal -->
+    <div id="listing-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 transition-opacity duration-300">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 transform transition-all duration-300">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h3 class="text-2xl font-bold text-gray-800">Post a New Listing</h3>
+                    <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-600 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <form id="add-listing-form" class="space-y-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Product Title</label>
+                        <input type="text" id="title" required
+                               class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700">Price (USD)</label>
+                        <input type="number" id="price" required min="0"
+                               class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <!-- GEMINI API INTEGRATION POINT -->
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <button type="button" onclick="generateDescription()" id="generate-desc-button"
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center transition duration-150 ease-in-out disabled:opacity-50">
+                                Generate Description ✨
+                            </button>
+                        </div>
+                        <textarea id="description" rows="3" required
+                                  class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        <div id="desc-generation-status" class="mt-1 text-xs text-center text-gray-500 hidden"></div>
+                    </div>
+                    <!-- END GEMINI API INTEGRATION POINT -->
+                    
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="category" required
+                                class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                            <option value="Electronics">Electronics</option>
+                            <option value="Vehicles">Vehicles</option>
+                            <option value="Real Estate">Real Estate</option>
+                            <option value="Services">Services</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div id="form-message" class="text-center text-sm font-medium text-red-600 hidden"></div>
+
+                    <button type="submit" id="submit-button"
+                            class="w-full py-3 px-4 border border-transparent rounded-lg shadow-lg text-white bg-indigo-600 hover:bg-indigo-700 font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Post Listing
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase setup script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, query, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let currentUserId = null;
+
+        // --- Utility Functions ---
+
+        /**
+         * Converts number to currency string.
+         * @param {number} num
+         */
+        const formatPrice = (num) => {
+            return num.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0
+            });
+        };
+
+        /**
+         * Generates a random placeholder image URL.
+         * @param {string} text
+         */
+        const getPlaceholderImageUrl = (text) => {
+             // Simple hash function to get a consistent color from text
+            let hash = 0;
+            for (let i = 0; i < text.length; i++) {
+                hash = text.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const color = '#' + (hash & 0x00FFFFFF).toString(16).padStart(6, '0');
+            return `https://placehold.co/400x300/${color.substring(1)}/ffffff?text=${encodeURIComponent(text.toUpperCase().slice(0, 10))}`;
+        };
+
+        /**
+         * Renders a single product listing card.
+         * @param {object} product - The product data object.
+         * @param {string} docId - Firestore document ID.
+         */
+        const renderProductCard = (product, docId) => {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100';
+            card.innerHTML = `
+                <img src="${getPlaceholderImageUrl(product.title)}" alt="${product.title}"
+                    class="w-full h-40 object-cover border-b border-gray-200"
+                    onerror="this.onerror=null; this.src='https://placehold.co/400x300/CCCCCC/333333?text=Image+Unavailable';">
+                <div class="p-5">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-xl font-bold text-gray-900 truncate">${product.title}</h3>
+                        <span class="text-sm font-semibold text-white bg-indigo-500 px-2 py-0.5 rounded-full">${product.category}</span>
+                    </div>
+                    <p class="text-2xl font-extrabold text-green-600 mb-3">${formatPrice(product.price)}</p>
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">${product.description}</p>
+                    <div class="flex items-center justify-between text-xs text-gray-500">
+                        <p>Seller ID: <span class="font-mono text-gray-800">${product.sellerId.substring(0, 4)}...</span></p>
+                        <button onclick="viewContact('${product.sellerId}')" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                            Contact
+                        </button>
+                    </div>
+                </div>
+            `;
+            return card;
+        };
+
+        // --- Firebase/Authentication Setup ---
+
+        const setupFirebase = async () => {
+            if (!firebaseConfig) {
+                console.error("Firebase configuration is missing.");
+                document.getElementById('auth-status').textContent = "ERROR: Firebase Config Missing";
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error'); // Only log errors
+
+                // Sign in with custom token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        document.getElementById('auth-status').textContent = "Authenticated";
+                        document.getElementById('auth-status').classList.remove('text-red-500');
+                        document.getElementById('auth-status').classList.add('text-green-600');
+                        document.getElementById('user-id-display').textContent = currentUserId;
+
+                        // Start listening to data only after successful auth
+                        setupRealtimeListener();
+                    } else {
+                        // This should ideally not happen after the initial sign-in
+                        console.warn("User signed out or authentication failed.");
+                        document.getElementById('auth-status').textContent = "Not Signed In";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error setting up Firebase:", error);
+                document.getElementById('auth-status').textContent = "ERROR: Setup Failed";
+            }
+        };
+
+        // --- Firestore Data Operations ---
+
+        /**
+         * Sets up a real-time listener for all public product listings.
+         */
+        const setupRealtimeListener = () => {
+            const listingsContainer = document.getElementById('listings-container');
+            const loadingState = document.getElementById('loading-state');
+            const productsColRef = collection(db, `artifacts/${appId}/public/data/products`);
+            const q = query(productsColRef); // No orderBy to avoid index requirement issues
+
+            loadingState.classList.remove('hidden');
+
+            onSnapshot(q, (snapshot) => {
+                listingsContainer.innerHTML = ''; // Clear existing listings
+                const products = [];
+
+                snapshot.forEach((doc) => {
+                    products.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort by timestamp in memory (newest first)
+                products.sort((a, b) => b.timestamp - a.timestamp);
+
+                if (products.length === 0) {
+                    listingsContainer.innerHTML = `<p class="col-span-full text-center py-8 text-gray-500">No listings found. Be the first to post!</p>`;
+                } else {
+                    products.forEach(product => {
+                        listingsContainer.appendChild(renderProductCard(product, product.id));
+                    });
+                }
+
+                loadingState.classList.add('hidden');
+            }, (error) => {
+                console.error("Error listening to products collection: ", error);
+                listingsContainer.innerHTML = `<p class="col-span-full text-center py-8 text-red-500">Error loading listings.</p>`;
+                loadingState.classList.add('hidden');
+            });
+        };
+
+        /**
+         * Handles the form submission to add a new product listing.
+         * @param {Event} e - Form submission event.
+         */
+        const handleAddListing = async (e) => {
+            e.preventDefault();
+            if (!currentUserId) {
+                showMessage("Authentication not ready. Please wait.");
+                return;
+            }
+
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Posting...';
+            showMessage(''); // Clear previous messages
+
+            try {
+                const title = document.getElementById('title').value;
+                const price = parseFloat(document.getElementById('price').value);
+                const description = document.getElementById('description').value;
+                const category = document.getElementById('category').value;
+
+                const newListing = {
+                    title,
+                    price,
+                    description,
+                    category,
+                    sellerId: currentUserId,
+                    timestamp: Date.now()
+                };
+
+                const productsColRef = collection(db, `artifacts/${appId}/public/data/products`);
+                await addDoc(productsColRef, newListing);
+
+                toggleModal();
+                document.getElementById('add-listing-form').reset();
+                showMessage("Listing posted successfully!", "green");
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showMessage(`Failed to post listing. Error: ${error.message}`, "red");
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Post Listing';
+            }
+        };
+
+        // --- Gemini API Integration ---
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`;
+        const apiKey = ""; // Canvas will provide this dynamically
+
+        /**
+         * Generates a product description using the Gemini API.
+         */
+        window.generateDescription = async () => {
+            const titleInput = document.getElementById('title');
+            const categorySelect = document.getElementById('category');
+            const descriptionArea = document.getElementById('description');
+            const statusDiv = document.getElementById('desc-generation-status');
+            const button = document.getElementById('generate-desc-button');
+
+            const title = titleInput.value.trim();
+            const category = categorySelect.value;
+
+            if (!title) {
+                alertMessage("Please enter a **Product Title** first before generating a description.", "Missing Title");
+                return;
+            }
+
+            button.disabled = true;
+            statusDiv.textContent = 'Generating engaging description...';
+            statusDiv.classList.remove('hidden');
+            statusDiv.classList.remove('text-green-600', 'text-red-600');
+            statusDiv.classList.add('text-gray-500');
+
+            const systemPrompt = `You are a professional classifieds copywriter for an online marketplace. Your goal is to write a compelling, detailed, and concise description for a product listing. Do not use any markdown formatting (like asterisks or bolding), just output the raw text. The description should be professional and encourage a purchase. Keep it under 150 words.`;
+            const userQuery = `Write a detailed description for a classifieds listing. The product is titled: "${title}". The category is "${category}".`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            let success = false;
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts && !success) {
+                try {
+                    const response = await fetch(API_URL + apiKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (generatedText) {
+                        descriptionArea.value = generatedText.trim();
+                        statusDiv.textContent = 'Description generated successfully!';
+                        statusDiv.classList.remove('text-gray-500');
+                        statusDiv.classList.add('text-green-600');
+                        success = true;
+                    } else {
+                        throw new Error("API response missing generated text.");
+                    }
+                } catch (error) {
+                    attempts++;
+                    console.error(`Attempt ${attempts} failed:`, error);
+                    if (attempts < maxAttempts) {
+                        const delay = Math.pow(2, attempts) * 1000; // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            if (!success) {
+                statusDiv.textContent = 'Failed to generate description after multiple attempts.';
+                statusDiv.classList.remove('text-gray-500');
+                statusDiv.classList.add('text-red-600');
+            }
+
+            button.disabled = false;
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        };
+        // --- End Gemini API Integration ---
+
+        /**
+         * Shows a message in the modal form.
+         * @param {string} message - The message to display.
+         * @param {'red'|'green'} [color='red'] - The color of the message.
+         */
+        const showMessage = (message, color = 'red') => {
+            const msgEl = document.getElementById('form-message');
+            if (message) {
+                msgEl.textContent = message;
+                msgEl.className = `text-center text-sm font-medium mt-2 ${color === 'green' ? 'text-green-600' : 'text-red-600'}`;
+                msgEl.classList.remove('hidden');
+            } else {
+                msgEl.classList.add('hidden');
+            }
+        };
+
+        // --- UI Functions ---
+
+        /**
+         * Toggles the visibility of the Add Listing modal.
+         */
+        window.toggleModal = () => {
+            const modal = document.getElementById('listing-modal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.style.opacity = 1;
+                    modal.querySelector('.transform').style.transform = 'scale(1)';
+                }, 10);
+            } else {
+                modal.style.opacity = 0;
+                modal.querySelector('.transform').style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        };
+
+        /**
+         * Placeholder for displaying contact information (since actual chat/email isn't implemented).
+         * @param {string} sellerId - The ID of the seller.
+         */
+        window.viewContact = (sellerId) => {
+            // NOTE: In a real app, this would open a chat or reveal contact info.
+            alertMessage(`To contact the seller, you would typically use an internal messaging system. Please use this Seller ID for reference: ${sellerId}`, "Contact Seller");
+        };
+
+        /**
+         * Custom alert/message box implementation (replacing window.alert).
+         * NOTE: Using a simple JS prompt for demonstration; in a final product, this would be a UI modal.
+         */
+        const alertMessage = (message, title = "MMS Message") => {
+            console.log(`[${title}]: ${message}`);
+            // Simple DOM manipulation for a temporary message display
+            const existing = document.getElementById('temp-message-box');
+            if(existing) existing.remove();
+
+            const msgBox = document.createElement('div');
+            msgBox.id = 'temp-message-box';
+            msgBox.className = 'fixed top-4 right-4 z-[9999] bg-indigo-600 text-white p-4 rounded-lg shadow-xl max-w-sm transition-opacity duration-300 opacity-0';
+            msgBox.innerHTML = `<strong class="font-bold">${title}</strong><p class="mt-1 text-sm">${message}</p>`;
+
+            document.body.appendChild(msgBox);
+
+            // Animate in and out
+            setTimeout(() => { msgBox.style.opacity = 1; }, 50);
+            setTimeout(() => { msgBox.style.opacity = 0; }, 5000);
+            setTimeout(() => { msgBox.remove(); }, 5300);
+        };
+
+        // --- Initialization ---
+
+        window.addEventListener('load', () => {
+            setupFirebase();
+            document.getElementById('add-listing-form').addEventListener('submit', handleAddListing);
+        });
+
+    </script>
+</body>
+</html>
